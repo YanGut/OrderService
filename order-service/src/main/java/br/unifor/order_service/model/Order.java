@@ -1,4 +1,4 @@
-package br.unifor.order.model;
+package br.unifor.order_service.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -15,21 +15,25 @@ public class Order {
     @Setter
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
-    private UUID orderId;
+    private String orderId;
 
     @Getter
     @Setter
     @Column(nullable = false)
-    private UUID userId;
+    private String userId;
 
     @Getter
     @Setter
     @Column(nullable = false)
     private String shippingAddress;
 
+    @Getter
+    @Setter
     @Column(nullable = false)
     private LocalDateTime createdAt;
 
+    @Getter
+    @Setter
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
@@ -47,4 +51,9 @@ public class Order {
     @Setter
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OrderItem> orderItems;
+
+    public Order() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
 }

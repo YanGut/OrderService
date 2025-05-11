@@ -1,6 +1,6 @@
-package br.unifor.order.DTO;
+package br.unifor.order_service.DTO;
 
-import br.unifor.order.model.Order;
+import br.unifor.order_service.model.Order;
 
 public class OrderResponseDTO {
     private Order order;

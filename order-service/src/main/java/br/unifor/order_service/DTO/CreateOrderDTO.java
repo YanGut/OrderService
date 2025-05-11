@@ -1,4 +1,4 @@
-package br.unifor.order.DTO;
+package br.unifor.order_service.DTO;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;

@@ -1,4 +1,4 @@
-package br.unifor.order.model;
+package br.unifor.order_service.model;
 
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -13,11 +13,11 @@ public class OrderItem {
     @Setter
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private UUID id;
+    private String id;
 
     @Getter
     @Setter
-    private UUID productId;
+    private String productId;
 
     @Getter
     @Setter

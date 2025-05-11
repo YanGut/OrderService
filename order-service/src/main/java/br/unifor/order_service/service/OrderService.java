@@ -1,10 +1,10 @@
-package br.unifor.order.service;
+package br.unifor.order_service.service;
 
-import br.unifor.order.DTO.CreateOrderDTO;
-import br.unifor.order.DTO.OrderResponseDTO;
-import br.unifor.order.model.Order;
-import br.unifor.order.model.OrderItem;
-import br.unifor.order.repository.OrderRepository;
+import br.unifor.order_service.DTO.CreateOrderDTO;
+import br.unifor.order_service.DTO.OrderResponseDTO;
+import br.unifor.order_service.model.Order;
+import br.unifor.order_service.model.OrderItem;
+import br.unifor.order_service.repository.OrderRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
