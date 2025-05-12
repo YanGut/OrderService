@@ -1,8 +1,0 @@
-MySQL container command:
-docker run -d \
-  --name order-service-db \
-  -p 3306:3306 \
-  -e MYSQL_ROOT_PASSWORD=root \
-  -e MYSQL_DATABASE=order-service-db \
-  -v porder-service-mysql-data:/var/lib/mysql \
-  mysql:8.0

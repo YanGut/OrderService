@@ -1,10 +1,10 @@
-package br.unifor;
+package com.unifor.order;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class OrderServiceApplicationTests {
+class OrderApplicationTests {
 
 	@Test
 	void contextLoads() {
