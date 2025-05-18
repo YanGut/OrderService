@@ -1,5 +1,6 @@
 package com.unifor.order.DTO;
 
+import com.unifor.order.model.OrderItem;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -17,8 +18,13 @@ public class OrderItemDTO {
         this.productId = productId;
         this.quantity = quantity;
     }
-
+    
     public OrderItemDTO() { }
+
+    public OrderItemDTO(OrderItem item) {
+        this.productId = item.getProductId();
+        this.quantity = item.getQuantity();
+    }
 
     public Long getProductId() { return productId; }
 
