@@ -1,18 +1,22 @@
 package com.unifor.order.service;
 
-import com.unifor.order.DTO.EnderecoEntregaDTO;
-import com.unifor.order.DTO.OrderDTO;
+import com.unifor.order.DTO.*;
 import com.unifor.order.enums.OrderStatus;
 import com.unifor.order.model.EnderecoEntrega;
 import com.unifor.order.model.Order;
 import com.unifor.order.model.OrderItem;
 import com.unifor.order.repository.OrderRepository;
+import com.unifor.publicador.eventos.NotificarEstoqueEvent;
 import com.unifor.publicador.eventos.NovoPedidoEvent;
+import com.unifor.publicador.eventos.PagamentoMensagem;
 import com.unifor.publicador.service.PedidoEventPublisher;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import jakarta.transaction.Transactional;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @Service
@@ -23,6 +27,10 @@ public class OrderService {
     @Autowired
     private PedidoEventPublisher pedidoEventPublisher;
 
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @RateLimiter(name = "orderService")
     public OrderDTO createOrder(OrderDTO orderDTO) {
         // Cria a entidade Order
         Order order = new Order();
@@ -51,16 +59,44 @@ public class OrderService {
         // Persiste no banco
         Order savedOrder = orderRepository.save(order);
 
-        // 🔁 Publica evento Kafka
+
+        Long productId = savedOrder.getOrderItems().get(0).getProductId();
+        String url = "http://localhost:8083/produtos/" + productId; // ajuste a porta e o host conforme seu projeto
+
+
+        ProdutoResponse produto = restTemplate.getForObject(url, ProdutoResponse.class);
+        if (produto == null || produto.getIdFornecedor() == null) {
+            throw new RuntimeException("Não foi possível obter o fornecedor para o produto " + productId);
+        }
+
         pedidoEventPublisher.publicarNovoPedido(
-            new NovoPedidoEvent(savedOrder.getId(), savedOrder.getUserId())
+            new NovoPedidoEvent(savedOrder.getId(), produto.getIdFornecedor() )
         );
 
+        // 🔁 Publica evento Kafka: pagamento
+        PagamentoMensagem pagamentoMensagem = new PagamentoMensagem();
+        pagamentoMensagem.setPedidoId(savedOrder.getId());
 
-        // 💳 Envia dados do cartão para o microserviço de pagamento (se implementado)
-    /*
-    pagamentoService.enviarParaPagamento(orderDTO.getCartao(), savedOrder);
-    */
+        DadosPagamento dadosPagamento = new DadosPagamento();
+        dadosPagamento.setTipo("cartao"); // ou mapeie de orderDTO.getPayMethod()
+        dadosPagamento.setValor(orderDTO.getTotalPrice().doubleValue());
+
+        if (orderDTO.getCartao() != null) {
+            dadosPagamento.setNumeroCartao(orderDTO.getCartao().getNumero());
+            dadosPagamento.setNomeTitular(orderDTO.getCartao().getNome());
+            dadosPagamento.setValidade(orderDTO.getCartao().getValidade());
+            dadosPagamento.setCvv(orderDTO.getCartao().getCvv());
+        }
+
+        pagamentoMensagem.setDadosPagamento(dadosPagamento);
+        pedidoEventPublisher.notificarPagamento(pagamentoMensagem);
+
+        pedidoEventPublisher.publicarAtualizarEstoque(
+                new NotificarEstoqueEvent(
+                        order.getId(),
+                        order.getOrderItems().stream().map(item ->new ProdutoResumidoDTO( item.getProductId(), item.getQuantity())).toList()
+                )
+        );
 
         return new OrderDTO(order);
     }
@@ -71,18 +107,20 @@ public class OrderService {
                 .toList();
     }
 
+    @RateLimiter(name = "orderService")
     public List<OrderDTO> getAllOrderByUserId(Long id) {
         return orderRepository.findByUserId(id).stream()
                 .map(OrderDTO::new) // usa o construtor direto
                 .toList();
     }
-
+    @RateLimiter(name = "orderService")
     public OrderDTO getOrderById(Long id) {
         return orderRepository.findById(id)
                 .map(order -> new OrderDTO(order.getId(), order.getUserId(), order.getOrderItems(), order.getTotalPrice()))
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
     }
 
+    @RateLimiter(name = "orderService")
     public OrderDTO updateOrder(OrderDTO orderDTO) {
         Order order = orderRepository.findById(orderDTO.getId())
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderDTO.getId()));
@@ -125,11 +163,40 @@ public class OrderService {
     }
 
 
+    @RateLimiter(name = "orderService")
     public OrderDTO deleteOrderById(Long id) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Order not found with id: " + id));
 
         orderRepository.delete(order);
         return new OrderDTO(order.getId(), order.getUserId(), order.getOrderItems(), order.getTotalPrice());
+    }
+
+    @RateLimiter(name = "orderService")
+    @Transactional
+    public void atualizarStatus(Long idPedido, String statusRecebido) {
+
+        Order pedido = orderRepository.findById(idPedido)
+                .orElseThrow(() -> new RuntimeException("Pedido não encontrado com id: " + idPedido));
+
+        try {
+            OrderStatus novoStatus = OrderStatus.valueOf(statusRecebido.toUpperCase());
+            pedido.setStatus(novoStatus);
+            orderRepository.save(pedido);
+            System.out.println("📦 Pedido " + idPedido + " atualizado para status: " + novoStatus);
+
+            if (OrderStatus.CANCELADO.equals(novoStatus)){
+                Hibernate.initialize(pedido.getOrderItems());
+                pedidoEventPublisher.publicarAtualizarEstoqueComReposicao(
+                        new NotificarEstoqueEvent(
+                                pedido.getId(),
+                                pedido.getOrderItems().stream().map(item ->new ProdutoResumidoDTO( item.getProductId(), item.getQuantity())).toList()
+                        )
+                );
+            }
+        } catch (IllegalArgumentException e) {
+            System.err.println("❌ Status inválido recebido: " + statusRecebido);
+            // opcional: lançar exception, logar em monitoramento, etc.
+        }
     }
 }
