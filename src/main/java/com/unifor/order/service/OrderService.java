@@ -16,6 +16,8 @@ import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
+
 
 import java.util.List;
 
@@ -29,6 +31,9 @@ public class OrderService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    @Value("${produtos.service.url}")
+    private String produtosServiceUrl;
 
     @RateLimiter(name = "orderService")
     public OrderDTO createOrder(OrderDTO orderDTO) {
@@ -61,7 +66,7 @@ public class OrderService {
 
 
         Long productId = savedOrder.getOrderItems().get(0).getProductId();
-        String url = "http://localhost:8083/produtos/" + productId; // ajuste a porta e o host conforme seu projeto
+        String url = produtosServiceUrl + "/produtos/" + productId;
 
 
         ProdutoResponse produto = restTemplate.getForObject(url, ProdutoResponse.class);

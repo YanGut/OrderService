@@ -26,9 +26,6 @@ public class EnderecoEntrega {
         this.cep = dto.getCep();
     }
 
-    public EnderecoEntrega() {
-    }
-
     public String getRua() {
         return rua;
     }
