@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package order;
+
+option java_package = "com.order.grpc";
+option java_multiple_files = true;
+
+service OrderService {
+  rpc CreateOrder (OrderRequest) returns (OrderResponse);
+  rpc ListOrders (ListOrdersRequest) returns (ListOrdersResponse);
+  rpc GetOrderById (OrderIdRequest) returns (OrderResponse);
+  rpc UpdateOrder (UpdateOrderRequest) returns (OrderResponse);
+  rpc DeleteOrder (OrderIdRequest) returns (DeleteOrderResponse);
+}
+
+message OrderRequest {
+  string customerName = 1;
+  repeated OrderItem items = 2;
+  double totalPrice = 3;
+}
+
+message OrderResponse {
+  int64 id = 1;
+  string customerName = 2;
+  repeated OrderItem items = 3;
+  double totalPrice = 4;
+}
+
+message OrderItem {
+  int64 productId = 1;
+  int64 itemId = 2;
+  int32 quantity = 3;
+}
+
+message OrderIdRequest {
+  int64 id = 1;
+}
+
+message UpdateOrderRequest {
+  int64 id = 1;
+  OrderRequest order = 2;
+}
+
+message DeleteOrderResponse {
+  bool success = 1;
+}
+
+message ListOrdersRequest {
+  // pode ter filtros no futuro
+}
+
+message ListOrdersResponse {
+  repeated OrderResponse orders = 1;
+}
